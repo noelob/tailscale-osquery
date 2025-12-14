@@ -5,6 +5,7 @@ import (
 	"flag"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/osquery/osquery-go"
@@ -51,6 +52,12 @@ func DevicesColumns() []table.ColumnDefinition {
 	return []table.ColumnDefinition{
 		table.TextColumn("id"),
 		table.TextColumn("name"),
+		table.TextColumn("authorized"),
+		table.TextColumn("user"),
+		table.TextColumn("client_version"),
+		table.TextColumn("hostname"),
+		table.TextColumn("ephemeral"),
+		table.TextColumn("external"),
 		table.TextColumn("os"),
 		table.TextColumn("distro_name"),
 		table.TextColumn("distro_version"),
@@ -71,6 +78,12 @@ func DevicesGenerate(ctx context.Context, queryContext table.QueryContext) ([]ma
 		ret = append(ret, map[string]string{
 			"id":             device.NodeID,
 			"name":           device.Name,
+			"authorized":     strconv.FormatBool(device.Authorized),
+			"user":           device.User,
+			"client_version": device.ClientVersion,
+			"hostname":       device.Hostname,
+			"ephemeral":      strconv.FormatBool(device.IsEphemeral),
+			"external":       strconv.FormatBool(device.IsExternal),
 			"os":             device.OS,
 			"distro_name":    device.Distro.Name,
 			"distro_version": device.Distro.Version,
