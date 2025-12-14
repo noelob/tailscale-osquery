@@ -42,12 +42,13 @@ func main() {
 	}
 
 	server.RegisterPlugin(table.NewPlugin("tailscale_devices", DevicesColumns(), DevicesGenerate))
+	server.RegisterPlugin(table.NewPlugin("tailscale_users", UsersColumns(), UsersGenerate))
 	if err := server.Run(); err != nil {
 		log.Fatalln(err)
 	}
 }
 
-// DevicesColumns returns the columns that our table will return.
+// DevicesColumns returns the columns for the tailscale_devices table.
 func DevicesColumns() []table.ColumnDefinition {
 	return []table.ColumnDefinition{
 		table.TextColumn("id"),
@@ -88,6 +89,51 @@ func DevicesGenerate(ctx context.Context, queryContext table.QueryContext) ([]ma
 			"distro_name":    device.Distro.Name,
 			"distro_version": device.Distro.Version,
 			"last_seen":      device.LastSeen.Format(time.RFC3339),
+		})
+	}
+
+	return ret, nil
+}
+
+// UsersColumns returns the columns for the tailscale_users table.
+func UsersColumns() []table.ColumnDefinition {
+	return []table.ColumnDefinition{
+		table.TextColumn("id"),
+		table.TextColumn("display_name"),
+		table.TextColumn("login_name"),
+		table.TextColumn("tailnet_id"),
+		table.TextColumn("type"),
+		table.TextColumn("role"),
+		table.TextColumn("status"),
+		table.IntegerColumn("device_count"),
+		table.TextColumn("connected"),
+		table.TextColumn("created"),
+		table.TextColumn("last_seen"),
+	}
+}
+
+// UsersGenerate will be called whenever the table is queried. It should return a full table scan.
+func UsersGenerate(ctx context.Context, queryContext table.QueryContext) ([]map[string]string, error) {
+	users, err := client.Users().List(ctx, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []map[string]string
+
+	for _, user := range users {
+		ret = append(ret, map[string]string{
+			"id":           user.ID,
+			"display_name": user.DisplayName,
+			"login_name":   user.LoginName,
+			"tailnet_id":   user.TailnetID,
+			"type":         string(user.Type),
+			"role":         string(user.Role),
+			"status":       string(user.Status),
+			"device_count": strconv.Itoa(user.DeviceCount),
+			"connected":    strconv.FormatBool(user.CurrentlyConnected),
+			"created":      user.Created.Format(time.RFC3339),
+			"last_seen":    user.LastSeen.Format(time.RFC3339),
 		})
 	}
 
