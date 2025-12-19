@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/kofalt/go-memoize"
 	"github.com/osquery/osquery-go"
 	"github.com/osquery/osquery-go/plugin/table"
 	"tailscale.com/client/tailscale/v2"
@@ -21,6 +22,8 @@ var (
 	socket   = flag.String("socket", "", "Path to osquery socket file")
 	timeout  = flag.Int("timeout", 0, "Timeout")
 	interval = flag.Int("interval", 0, "Interval")
+
+	cache = memoize.NewMemoizer(90*time.Second, 10*time.Minute)
 )
 
 func main() {
@@ -70,7 +73,10 @@ func DevicesColumns() []table.ColumnDefinition {
 
 // DevicesGenerate will be called whenever the table is queried. It should return a full table scan.
 func DevicesGenerate(ctx context.Context, queryContext table.QueryContext) ([]map[string]string, error) {
-	devices, err := client.Devices().ListWithAllFields(ctx)
+	devices, err, _ := memoize.Call(cache, "devices", func() ([]tailscale.Device, error) {
+		return client.Devices().ListWithAllFields(ctx)
+	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -116,7 +122,10 @@ func UsersColumns() []table.ColumnDefinition {
 
 // UsersGenerate will be called whenever the table is queried. It should return a full table scan.
 func UsersGenerate(ctx context.Context, queryContext table.QueryContext) ([]map[string]string, error) {
-	users, err := client.Users().List(ctx, nil, nil)
+	users, err, _ := memoize.Call(cache, "users", func() ([]tailscale.User, error) {
+		return client.Users().List(ctx, nil, nil)
+	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +160,10 @@ func TagsColumns() []table.ColumnDefinition {
 
 // TagsGenerate will be called whenever the table is queried. It should return a full table scan.
 func TagsGenerate(ctx context.Context, queryContext table.QueryContext) ([]map[string]string, error) {
-	devices, err := client.Devices().List(ctx)
+	devices, err, _ := memoize.Call(cache, "devices", func() ([]tailscale.Device, error) {
+		return client.Devices().ListWithAllFields(ctx)
+	})
+
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +194,10 @@ func DeviceTagsColumns() []table.ColumnDefinition {
 
 // DeviceTagsGenerate will be called whenever the table is queried. It should return a full table scan.
 func DeviceTagsGenerate(ctx context.Context, queryContext table.QueryContext) ([]map[string]string, error) {
-	devices, err := client.Devices().ListWithAllFields(ctx)
+	devices, err, _ := memoize.Call(cache, "devices", func() ([]tailscale.Device, error) {
+		return client.Devices().ListWithAllFields(ctx)
+	})
+
 	if err != nil {
 		return nil, err
 	}
