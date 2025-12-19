@@ -44,6 +44,7 @@ func main() {
 	server.RegisterPlugin(table.NewPlugin("tailscale_devices", DevicesColumns(), DevicesGenerate))
 	server.RegisterPlugin(table.NewPlugin("tailscale_users", UsersColumns(), UsersGenerate))
 	server.RegisterPlugin(table.NewPlugin("tailscale_tags", TagsColumns(), TagsGenerate))
+	server.RegisterPlugin(table.NewPlugin("tailscale_device_tags", DeviceTagsColumns(), DeviceTagsGenerate))
 	if err := server.Run(); err != nil {
 		log.Fatalln(err)
 	}
@@ -168,5 +169,34 @@ func TagsGenerate(ctx context.Context, queryContext table.QueryContext) ([]map[s
 			"tag": t,
 		})
 	}
+	return ret, nil
+}
+
+// DeviceTagsColumns returns the columns for the tailscale_device_tags table.
+func DeviceTagsColumns() []table.ColumnDefinition {
+	return []table.ColumnDefinition{
+		table.TextColumn("id"),
+		table.TextColumn("tag"),
+	}
+}
+
+// DeviceTagsGenerate will be called whenever the table is queried. It should return a full table scan.
+func DeviceTagsGenerate(ctx context.Context, queryContext table.QueryContext) ([]map[string]string, error) {
+	devices, err := client.Devices().ListWithAllFields(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []map[string]string
+
+	for _, device := range devices {
+		for _, tag := range device.Tags {
+			ret = append(ret, map[string]string{
+				"id":  device.NodeID,
+				"tag": tag,
+			})
+		}
+	}
+
 	return ret, nil
 }
